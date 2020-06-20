@@ -1,0 +1,142 @@
+<html>
+
+<head>
+  <title>Virtual Eye</title>
+
+
+</head>
+<style>
+  body {
+    margin: 25px;
+  }
+
+  #main {
+    position: relative;
+    margin: 50px 0;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  #description {
+    margin-top: 20px;
+    width: 600px;
+  }
+
+  #description-title {
+    font-weight: bold;
+    font-size: 18px;
+  }
+</style>
+
+<body>
+  <h1> Virtual Eye </h1>
+  <div id="main">
+    <video id="video" playsinline style="
+      -webkit-transform: scaleX(-1);
+      transform: scaleX(-1);
+      width: auto;
+      height: auto;
+      ">
+    </video>
+    <canvas id="output"></canvas>
+    <h1> 
+      Thank you for using this, you can now minimize this window and continue. <br/>
+      This app will stop you from moving away, or any peeking behind <br/><br/>
+      Enjoy your work ! 
+    </h1>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+<script src="https://unpkg.com/@tensorflow-models/posenet"></script>
+
+<script>
+  let video, model, videoWidth, videoHeight, ctx, canvas, poseNet, pose;
+  async function setupCamera() {
+    
+    video = document.getElementById('video');
+    console.log(video);
+    const stream = await navigator.mediaDevices.getUserMedia({
+      'audio': false,
+      'video': { facingMode: 'user' },
+    });
+    video.srcObject = stream;
+
+    return new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        resolve(video);
+      };
+    });
+  }
+
+  async function main() {
+    await setupCamera();
+   video.play();
+
+    videoWidth = video.videoWidth;
+    videoHeight = video.videoHeight;
+    video.width = videoWidth;
+    video.height = videoHeight;
+
+    canvas = document.getElementById('output');
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    ctx = canvas.getContext('2d');
+    ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+
+     renderprediction();
+    //video.hide();
+
+  }
+
+  async function loadimage() {
+  }
+
+  function loadModels(poses) {
+    console.log(poses);
+    if (poses.length > 0) {
+
+      pose = poses[0].pose;
+
+    }
+  }
+
+  async function renderprediction() {
+  
+    poseNet = await posenet.load();
+
+    const pose = await poseNet.estimateMultiplePoses(video);
+
+    if (pose.length > 1) {
+      console.log('something else is coming up so locking the computer for safety');
+      window.location.replace('/lock');
+      }
+    else {
+      //console.log(pose.length);
+      if (pose.length == 1) {
+        for (let i = 0; i < pose[0].keypoints.length; i++) {
+          if (pose[0].keypoints[i].part == "leftEye") {
+            if (pose[0].keypoints[i].position && (pose[0].keypoints[i].position.x < 100 || pose[0].keypoints[i].position.x > 500)) {
+              console.log('Probably you are moving away');
+              window.location.replace('/lock');
+            }
+          }
+        }
+
+      }
+    }
+
+
+   
+    requestAnimationFrame(renderprediction);
+  }
+  main();
+</script>
+
+</html>
